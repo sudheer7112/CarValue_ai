@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "CarValue__AI__LastFinal/backend/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "CarValue__AI__LastFinal/backend/app.py"
+    }
+  ]
+}
