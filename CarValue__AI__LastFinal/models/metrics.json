@@ -1,0 +1,59 @@
+{
+  "dataset_rows": 11517,
+  "target": "Price_Lakhs",
+  "features": [
+    "Brand",
+    "Model",
+    "Location",
+    "Year",
+    "Kilometers_Driven",
+    "Fuel_Type",
+    "Transmission",
+    "Owner_Type",
+    "Mileage",
+    "Engine",
+    "Power",
+    "Seats"
+  ],
+  "model_comparison": [
+    {
+      "model": "Gradient Boosting",
+      "mae": 4.8989704002030505,
+      "rmse": 12.719158892520078,
+      "r2": 0.9271102519913317
+    },
+    {
+      "model": "Random Forest",
+      "mae": 4.149133723613867,
+      "rmse": 12.734710891864204,
+      "r2": 0.9269318951753833
+    },
+    {
+      "model": "Extra Trees",
+      "mae": 4.2587854552469135,
+      "rmse": 13.953462536136009,
+      "r2": 0.9122769658238321
+    },
+    {
+      "model": "Linear Regression",
+      "mae": 12.023067726275762,
+      "rmse": 20.075541458389125,
+      "r2": 0.8184132322165288
+    },
+    {
+      "model": "Ridge Regression",
+      "mae": 14.379383625036967,
+      "rmse": 28.080164774218932,
+      "r2": 0.6447378275927691
+    }
+  ],
+  "best": {
+    "best_model": "Gradient Boosting",
+    "metrics": {
+      "model": "Gradient Boosting",
+      "mae": 4.8989704002030505,
+      "rmse": 12.719158892520078,
+      "r2": 0.9271102519913317
+    }
+  }
+}

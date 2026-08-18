@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="CarValue AI alternative car recommendations based on your selected vehicle profile.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <title>CarValue AI — Alternatives</title>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/" data-transition><span class="logo"><img src="/img/car-cv.png" alt="CV" class="logo-img"></span><span>CarValue<span class="accent">AI</span></span></a>
+    <button class="menu">☰</button>
+    <nav class="nav-links">
+      <a href="/" data-transition>Home</a>
+      <a href="/predict.html" data-transition>Predict</a>
+      <a href="/compare.html" data-transition>Compare</a>
+      <a href="/recommend.html" data-transition>Alternatives</a>
+      <a href="/analytics.html" data-transition>Analytics</a>
+    </nav>
+    <a class="nav-cta" href="/predict.html" data-transition>Value a car →</a>
+  </div>
+</header>
+
+<main class="container">
+  <section class="page-title">
+    <div class="eyebrow">03 / ALTERNATIVES</div>
+    <h1>Other cars that fit the same search.</h1>
+    <p>Each option explains what is similar, what is different, and why it may be worth a closer look.</p>
+  </section>
+  <div id="summary" class="surface note-box" style="margin-bottom:22px">Loading your previous vehicle…</div>
+  <div id="grid" class="reco-grid"></div>
+</main>
+
+<footer>
+  <div class="container">
+    <span>CarValue AI · Used-car decision support</span>
+    <span>Estimates support decisions; physical inspection is still required.</span>
+  </div>
+</footer>
+<div class="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  function money(x) {
+    var n = Number(x);
+    return n >= 100 ? '\u20B9' + (n / 100).toFixed(2) + ' Cr' : '\u20B9' + n.toFixed(2) + ' L';
+  }
+
+  function sign(x) {
+    var n = Number(x || 0);
+    return n > 0 ? '+' + n : n < 0 ? String(n) : '0';
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function card(c, i) {
+    try {
+      var p  = c.input  || {};
+      var sp = c.specs  || {};
+      var x  = c.comparison_to_selected || {};
+      var priceRange = Array.isArray(c.price_range_lakhs) ? c.price_range_lakhs : [0, 0];
+      var priceDiff  = Number(x.price_difference_lakhs || 0);
+      var reasons    = Array.isArray(x.reasons) && x.reasons.length ? x.reasons : ['Similar overall vehicle profile'];
+      var badges     = Array.isArray(x.badges) && x.badges.length ? x.badges : [p.Fuel_Type, p.Transmission];
+
+      var priceDiffText = priceDiff === 0 ? 'Similar Price' :
+        priceDiff > 0 ? '\u20B9' + priceDiff.toFixed(2) + 'L higher' :
+                        '\u20B9' + Math.abs(priceDiff).toFixed(2) + 'L lower';
+
+      var rankLabel = i === 0 ? '★ #1 BEST MATCH' : i === 1 ? '★ #2 TOP ALTERNATIVE' : 'OPTION ' + (i + 1);
+
+      /* NOTE: API returns p.Year (uppercase) from normalize() */
+      return [
+        '<article class="surface reco-card interactive-reco" style="--delay:' + (i * 60) + 'ms">',
+          '<div class="reco-top">',
+            '<div><div class="eyebrow">' + esc(p.Brand || '') + '</div><h3 style="margin-top:2px">' + esc(p.Model || '') + '</h3></div>',
+            '<span class="rank-chip">' + rankLabel + '</span>',
+          '</div>',
+          '<div class="badge-row">',
+            badges.map(function (b) { return '<span class="badge-pill exact">\u2713 ' + esc(b) + '</span>'; }).join(''),
+          '</div>',
+          '<div class="reco-price-row">',
+            '<div class="reco-price" style="margin-bottom:0">' + money(c.predicted_price_lakhs || 0) + '</div>',
+            '<span class="reco-diff-chip ' + (priceDiff < 0 ? 'lower' : priceDiff > 0 ? 'higher' : '') + '">' + esc(priceDiffText) + '</span>',
+          '</div>',
+          '<div class="range" style="font-size:12px">Fair band ' + money(priceRange[0]) + ' \u2014 ' + money(priceRange[1]) + '</div>',
+          '<div class="spec-grid" style="margin-top:14px">',
+            '<div class="spec"><b>\u2699 ' + esc(sp.engine_cc || '—') + ' cc</b><span>ENGINE</span></div>',
+            '<div class="spec"><b>\u03DF ' + esc(sp.power_bhp || '—') + ' bhp</b><span>POWER</span></div>',
+            '<div class="spec"><b>\u2341 ' + esc(sp.mileage   || '—') + ' km/l</b><span>MILEAGE</span></div>',
+            '<div class="spec"><b>\u25F7 ' + esc(p.Year || p.year || '—') + '</b><span>YEAR</span></div>',
+          '</div>',
+          '<button class="details-toggle" type="button" onclick="this.closest(\'.reco-card\').classList.toggle(\'expanded\')">',
+            'See why this is here <span>＋</span>',
+          '</button>',
+          '<div class="reco-details">',
+            '<div class="detail-summary">',
+              '<div><span>Price vs selected</span><b>' + esc(priceDiffText) + '</b></div>',
+              '<div><span>Mileage difference</span><b>' + sign(x.mileage_difference) + ' km/l</b></div>',
+              '<div><span>Engine difference</span><b>' + sign(x.engine_difference_cc) + ' cc</b></div>',
+              '<div><span>Power difference</span><b>' + sign(x.power_difference_bhp) + ' bhp</b></div>',
+            '</div>',
+            '<div class="why-list">',
+              '<strong>Why consider it</strong>',
+              '<ul>' + reasons.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul>',
+            '</div>',
+            '<div class="reco-actions">',
+              '<a class="primary small-btn" href="/compare.html" data-transition ' +
+                'onclick="sessionStorage.setItem(\'carvalue:comparePair\', JSON.stringify({carA:' + esc(JSON.stringify(input)) + ',carB:' + esc(JSON.stringify(p)) + '}))">Compare with this car \u21C4</a>',
+              '<a class="ghost small-btn" href="/predict.html" data-transition>Value this car</a>',
+            '</div>',
+          '</div>',
+        '</article>'
+      ].join('');
+    } catch (e) {
+      return '<div class="surface note-box">Could not render this card.</div>';
+    }
+  }
+
+  var summaryEl = document.getElementById('summary');
+  var gridEl    = document.getElementById('grid');
+
+  var raw = sessionStorage.getItem('carvalue:recommendFrom') || sessionStorage.getItem('carvalue:lastInput');
+  var input = null;
+
+  try { input = raw ? JSON.parse(raw) : null; } catch (e) { input = null; }
+
+  if (!input) {
+    summaryEl.innerHTML = 'Value a car first: <a href="/predict.html">Start \u2192</a>';
+    return;
+  }
+
+  summaryEl.innerHTML = '<strong>Your selected car:</strong> ' +
+    esc(input.brand || '') + ' ' + esc(input.model || '') + ' \u00B7 ' +
+    esc(input.year  || '') + ' \u00B7 ' + esc(input.fuel  || '') + ' \u00B7 ' +
+    esc(input.transmission || '') + ' \u00B7 ' +
+    Number(input.km_driven || 0).toLocaleString() + ' km';
+
+  gridEl.innerHTML = '<div style="padding:32px;text-align:center;opacity:.6">Loading alternatives…</div>';
+
+  api('/api/recommendations', { method: 'POST', body: JSON.stringify(input) })
+    .then(function (r) {
+      var recs = r.recommendations || [];
+      if (!recs.length) {
+        gridEl.innerHTML = '<div class="surface empty" style="padding:32px;text-align:center">No alternatives found for this vehicle profile.</div>';
+        return;
+      }
+      gridEl.innerHTML = recs.map(card).join('');
+    })
+    .catch(function (e) {
+      gridEl.innerHTML = '<div class="surface empty" style="padding:24px">Could not load alternatives. ' +
+        '<a href="/predict.html">Try again \u2192</a></div>';
+      if (typeof showToast === 'function') showToast(e.message || 'Failed to load recommendations.');
+    });
+}());
+</script>
+</body>
+</html>

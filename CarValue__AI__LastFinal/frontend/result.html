@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="View your CarValue AI car valuation result — estimated fair price, negotiation tips, depreciation outlook and vehicle signals.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <title>CarValue AI — Result</title>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/" data-transition>
+      <span class="logo"><img src="/img/car-cv.png" alt="CV" class="logo-img"></span>
+      <span>CarValue<span class="accent">AI</span></span>
+    </a>
+    <button class="menu">☰</button>
+    <nav class="nav-links">
+      <a href="/" data-transition>Home</a>
+      <a href="/predict.html" data-transition>Predict</a>
+      <a href="/compare.html" data-transition>Compare</a>
+      <a href="/recommend.html" data-transition>Alternatives</a>
+      <a href="/analytics.html" data-transition>Analytics</a>
+    </nav>
+    <a class="nav-cta" href="/predict.html" data-transition>Value a car →</a>
+  </div>
+</header>
+
+<main class="container">
+  <section class="page-title">
+    <div class="eyebrow">VALUATION RESULT</div>
+    <h1 id="result-title">Your car's market view.</h1>
+    <p id="result-subtitle">Loading…</p>
+  </section>
+  <div id="result-body"></div>
+
+
+  <section class="section" style="padding-bottom:30px">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">WHAT NEXT</div>
+        <h2>Turn the estimate into a plan.</h2>
+      </div>
+    </div>
+    <div class="cards-3">
+      <a class="surface info-card" href="/recommend.html" data-transition
+         onclick="sessionStorage.setItem('carvalue:recommendFrom', sessionStorage.getItem('carvalue:lastInput'))">
+        <div class="symbol">⌕</div>
+        <h3>Find alternatives</h3>
+        <p>See other models with estimated prices, engine, power and everyday details.</p>
+      </a>
+      <a class="surface info-card" href="/compare.html" data-transition>
+        <div class="symbol">⇄</div>
+        <h3>Compare another car</h3>
+        <p>Put this decision beside a second vehicle.</p>
+      </a>
+      <a class="surface info-card" href="/predict.html" data-transition>
+        <div class="symbol">↻</div>
+        <h3>Value another car</h3>
+        <p>Start again with a different vehicle.</p>
+      </a>
+      <a class="surface info-card" href="/analytics.html" data-transition>
+        <div class="symbol">📊</div>
+        <h3>Market Analytics</h3>
+        <p>Understand market trends and check if your deal is good.</p>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>CarValue AI · Used-car decision support</span>
+    <span>Estimates support decisions; physical inspection is still required.</span>
+  </div>
+</footer>
+<div class="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Helpers ── */
+  function money(x) {
+    x = Number(x || 0);
+    return x >= 100 ? '\u20B9' + (x / 100).toFixed(2) + ' Cr' : '\u20B9' + x.toFixed(2) + ' L';
+  }
+
+  function stat(icon, label, value) {
+    return '<div class="icon-stat"><div class="symbol">' + icon + '</div><strong>' + value + '</strong><span>' + label + '</span></div>';
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function marketBand(low, mid, high) {
+    var a = Number(low), b = Number(mid), c = Number(high);
+    var pct = ((b - a) / Math.max(0.01, c - a)) * 100;
+    return [
+      '<div class="market-result">',
+        '<div class="market-result-head">',
+          '<div><div class="eyebrow">FAIR-VALUE RANGE</div><h3>Where the estimate sits</h3></div>',
+          '<span class="range-chip">' + money(a) + ' \u2014 ' + money(c) + '</span>',
+        '</div>',
+        '<div class="value-track">',
+          '<span class="track-fill"></span>',
+          '<span class="value-pin" style="left:' + Math.max(4, Math.min(96, pct)) + '%">',
+            '<b>' + money(b) + '</b><i></i>',
+          '</span>',
+        '</div>',
+        '<div class="value-labels">',
+          '<span>Lower range<br><b>' + money(a) + '</b></span>',
+          '<span>Estimated value<br><b>' + money(b) + '</b></span>',
+          '<span>Upper range<br><b>' + money(c) + '</b></span>',
+        '</div>',
+        '<div class="pulse-line"><span></span><span></span><span></span><span></span><span></span></div>',
+        '<p class="visual-note">The marker shows the model estimate inside the practical market band.</p>',
+      '</div>'
+    ].join('');
+  }
+
+  /* ── Load data ── */
+  var titleEl    = document.getElementById('result-title');
+  var subtitleEl = document.getElementById('result-subtitle');
+  var bodyEl     = document.getElementById('result-body');
+
+  var raw = sessionStorage.getItem('carvalue:lastPrediction');
+
+  if (!raw) {
+    titleEl.textContent    = 'No result found.';
+    subtitleEl.textContent = 'Please complete a valuation first.';
+    bodyEl.innerHTML = '<div class="surface empty" style="padding:32px;text-align:center">' +
+      'No valuation data found. <a href="/predict.html" style="color:var(--blue)">Start a valuation \u2192</a></div>';
+    return;
+  }
+
+  try {
+    var r = JSON.parse(raw);
+
+    if (!r || typeof r !== 'object') throw new Error('Invalid prediction data.');
+    if (r.error) throw new Error(r.error);
+
+    var p  = r.input      || {};
+    var s  = r.signals    || {};
+    var n  = r.negotiation || {};
+    var sp = r.specs      || {};
+    var depr = Array.isArray(r.depreciation) ? r.depreciation : [];
+    var priceRange = Array.isArray(r.price_range_lakhs) ? r.price_range_lakhs : [0, 0];
+    var decision   = r.decision   || {};
+
+    var brand    = esc(p.Brand    || '—');
+    var model    = esc(p.Model    || '—');
+    var location = esc(p.Location || '—');
+    var year     = esc(p.Year     || '—');
+    var kmRaw    = Number(p.Kilometers_Driven || 0);
+    var fuelType = esc(p.Fuel_Type     || '—');
+    var transm   = esc(p.Transmission  || '—');
+    var ownerT   = esc(p.Owner_Type    || '—');
+    var mileage  = Number(p.Mileage    || 0);
+
+    var pred  = Number(r.predicted_price_lakhs || 0);
+    var vAge  = Number(s.vehicle_age || 0);
+    var flags = Array.isArray(s.flags) ? s.flags : [];
+
+    /* Title & subtitle */
+    titleEl.textContent    = brand + ' ' + model;
+    subtitleEl.textContent = location + ' \u00B7 ' + year + ' \u00B7 ' +
+      kmRaw.toLocaleString() + ' km \u00B7 ' + fuelType + ' \u00B7 ' + transm;
+
+    /* Age label */
+    function ageLabel(a) {
+      if (a <= 3) return 'Relatively young vehicle';
+      if (a <= 7) return 'Normal used-car age';
+      if (a <= 10) return 'Older vehicle — inspect carefully';
+      return 'High vehicle age — history matters';
+    }
+
+    /* Usage label */
+    function usageLabel(km) {
+      if (km < 40000) return 'Low kilometres';
+      if (km < 80000) return 'Normal usage';
+      return 'Higher usage — check service history';
+    }
+
+    /* Economy label */
+    function econLabel(mi) {
+      if (mi >= 20) return 'Very good mileage';
+      if (mi >= 15) return 'Good everyday mileage';
+      if (mi >= 11) return 'Average mileage';
+      return 'Lower mileage';
+    }
+
+    /* Owner label */
+    function ownerLabel(o) {
+      if (o === 'First')  return 'First-owner history';
+      if (o === 'Second') return 'Second-owner history';
+      return 'Multiple-owner history';
+    }
+
+    /* Depreciation timeline */
+    var deprHtml = depr.map(function (x) {
+      return '<div class="timeline-card">' +
+        '<small>IN ' + x.year + ' YEAR' + (x.year > 1 ? 'S' : '') + '</small>' +
+        '<strong>' + money(x.value) + '</strong>' +
+        '<span>Estimated value</span>' +
+        '</div>';
+    }).join('');
+
+    /* Decision banner */
+    var decisionHtml = '';
+    if (decision.label) {
+      decisionHtml = '<div class="note-box" style="margin-top:20px;border-left:4px solid var(--blue)">' +
+        '<strong>' + esc(decision.label) + '</strong><br>' +
+        '<span>' + esc(decision.action || '') + '</span>' +
+        '</div>';
+    }
+
+    var isEv = (fuelType === 'Electric');
+    var evAnalysis = r.ev_analysis || s.ev_analysis;
+
+    var iconGridHtml = isEv ? [
+      stat('⚡', 'Battery Pack', (sp.battery_kwh || p.Battery_Capacity || 40) + ' kWh'),
+      stat('🔋', 'Est. Range',   (evAnalysis ? evAnalysis.real_world_range_km : 250) + ' km'),
+      stat('⚡', 'Power',        (sp.power_bhp  || '—') + ' bhp'),
+      stat('⏱', 'Vehicle age',   vAge + ' yrs'),
+      stat('🎯', 'SOH Health',   (evAnalysis ? evAnalysis.estimated_soh_percent : 92) + '%')
+    ].join('') : [
+      stat('\u2699', 'Engine',      (sp.engine_cc  || '—') + ' cc'),
+      stat('\u03DF', 'Power',       (sp.power_bhp  || '—') + ' bhp'),
+      stat('\u2341', 'Mileage',     (sp.mileage    || '—') + ' km/l'),
+      stat('\u25F7', 'Vehicle age', vAge + ' yrs'),
+      stat('\u25C9', 'Usage',       Math.round(kmRaw / Math.max(1, vAge + 1)).toLocaleString() + ' km/yr')
+    ].join('');
+
+    var evCardHtml = evAnalysis ? [
+      '<div class="surface" style="margin-top:24px;padding:24px;background:linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);border:1.5px solid rgba(99, 102, 241, 0.3);border-radius:16px;">',
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">',
+          '<div style="display:flex;align-items:center;gap:10px;">',
+            '<span style="font-size:24px;">⚡</span>',
+            '<div><h3 style="margin:0;font-size:18px;font-weight:700;">Car Expert EV Battery Analysis</h3><span style="font-size:13px;color:var(--text-muted)">High-Voltage Battery & Range Diagnostics</span></div>',
+          '</div>',
+          '<span class="range-chip" style="background:#6366f1;color:#fff;font-weight:600;">' + esc(evAnalysis.health_verdict) + '</span>',
+        '</div>',
+        '<div class="icon-grid" style="grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:12px;margin-bottom:16px;">',
+          '<div class="icon-stat"><div class="symbol">⚡</div><strong>' + evAnalysis.battery_capacity_kwh + ' kWh</strong><span>Battery Pack</span></div>',
+          '<div class="icon-stat"><div class="symbol">🔋</div><strong>' + evAnalysis.estimated_soh_percent + '%</strong><span>State of Health (SOH)</span></div>',
+          '<div class="icon-stat"><div class="symbol">🛣️</div><strong>' + evAnalysis.real_world_range_km + ' km</strong><span>Est. Real Range</span></div>',
+          '<div class="icon-stat"><div class="symbol">💰</div><strong>₹' + evAnalysis.annual_fuel_savings_thousands_rs + 'k / yr</strong><span>Fuel Savings vs ICE</span></div>',
+        '</div>',
+        '<p style="margin:0;font-size:14px;line-height:1.5;color:var(--text-main);"><strong>Car Expert Tip:</strong> Running cost is ~₹' + evAnalysis.cost_per_km_rs + '/km vs ~₹6.50/km for petrol/diesel. Always verify the battery BMS diagnostic log and charging history before completing purchase.</p>',
+      '</div>'
+    ].join('') : '';
+
+    /* Full result HTML */
+    bodyEl.innerHTML = [
+      '<div class="result-grid">',
+
+        /* ── Main card ── */
+        '<section class="surface result-main">',
+          '<div class="price-block">',
+            '<div class="price-label">Estimated fair value</div>',
+            '<div class="price">' + money(pred) + '</div>',
+            '<div class="range">Practical market band: <b>' + money(priceRange[0]) + '</b> \u2014 <b>' + money(priceRange[1]) + '</b></div>',
+          '</div>',
+
+          '<div class="icon-grid">',
+            iconGridHtml,
+          '</div>',
+
+          marketBand(priceRange[0], pred, priceRange[1]),
+
+          evCardHtml,
+
+          '<div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">',
+            '<a class="primary" href="#alternatives-section" style="width:100%;text-align:center;display:block">View Similar Alternatives ↓</a>',
+            '<a class="ghost" href="/analytics.html" data-transition style="width:100%;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--blue-soft);color:var(--blue);border:1.5px solid var(--blue-border);font-weight:600">📊 Check Analytics →</a>',
+          '</div>',
+        '</section>',
+
+        /* ── Side card ── */
+        '<aside class="surface result-side">',
+          '<div class="side-visual">',
+            '<div class="orbit-dot"></div>',
+            '<div class="side-symbol">\u20B9</div>',
+            '<div class="side-number">' + money(pred) + '</div>',
+            '<span>estimated market value</span>',
+          '</div>',
+          '<div class="side-summary">',
+            '<div><span>Fuel</span><b>'         + fuelType + '</b></div>',
+            '<div><span>Transmission</span><b>' + transm   + '</b></div>',
+            '<div><span>Owner</span><b>'        + ownerT   + '</b></div>',
+            '<div><span>Location</span><b>'     + location + '</b></div>',
+          '</div>',
+          
+          '<div class="buyer-facts" style="margin-top:24px">',
+            '<div><b>Vehicle age</b><span>' + ageLabel(vAge)   + '</span></div>',
+            '<div><b>Usage</b><span>'        + usageLabel(kmRaw) + '</span></div>',
+            '<div><b>Fuel economy</b><span>' + econLabel(mileage) + '</span></div>',
+            '<div><b>Ownership</b><span>'    + ownerLabel(ownerT)  + '</span></div>',
+          '</div>',
+
+          '<div class="note-box" style="margin-top:20px">',
+            '<strong>Inspection note</strong><br>',
+            flags.map(function (f) { return esc(f); }).join(' '),
+          '</div>',
+
+          decisionHtml,
+        '</aside>',
+
+      '</div>',
+
+      /* ── Overall Recommendation ── */
+      '<div id="overall-reco-section"></div>',
+
+      /* ── Recommended Alternatives (Top 2 Exact Profile Match) ── */
+      '<section id="alternatives-section" class="section" style="padding-bottom:0">',
+        '<div class="section-head">',
+          '<div>',
+            '<div class="eyebrow">SMART ALTERNATIVES · EXACT PROFILE MATCH</div>',
+            '<h2>Top 2 recommended alternative cars.</h2>',
+            '<p>Vehicles sharing the exact fuel type, transmission, seating capacity and performance class.</p>',
+          '</div>',
+          '<div>',
+            '<a class="ghost small-btn" href="/recommend.html" data-transition onclick="sessionStorage.setItem(\'carvalue:recommendFrom\', sessionStorage.getItem(\'carvalue:lastInput\'))">View all alternatives →</a>',
+          '</div>',
+        '</div>',
+        '<div id="top2-reco-grid" class="cards-2">',
+          '<div class="surface empty" style="padding:28px;grid-column:1/-1">Loading closest vehicle recommendations…</div>',
+        '</div>',
+      '</section>',
+
+      /* ── Negotiation ── */
+      '<section class="section" style="padding-bottom:0">',
+        '<div class="section-head"><div>',
+          '<div class="eyebrow">NEGOTIATION</div>',
+          '<h2>Go into the conversation with numbers.</h2>',
+          '<p>Use the estimate as your anchor instead of negotiating blindly.</p>',
+        '</div></div>',
+        '<div class="cards-3">',
+          '<div class="surface info-card"><div class="symbol">\u2198</div><h3>Opening offer</h3>' +
+            '<p>Start around <strong>' + money(n.opening_offer || 0) + '</strong> when the asking price is above the fair range.</p></div>',
+          '<div class="surface info-card"><div class="symbol">\u25CE</div><h3>Target price</h3>' +
+            '<p>A practical target is around <strong>' + money(n.target_price || 0) + '</strong> after a clean inspection.</p></div>',
+          '<div class="surface info-card"><div class="symbol">\u2191</div><h3>Upper fair edge</h3>' +
+            '<p>Above <strong>' + money(n.upper_fair_price || 0) + '</strong> needs a strong reason.</p></div>',
+        '</div>',
+      '</section>',
+
+      /* ── Depreciation ── */
+      deprHtml ? [
+        '<section class="section" style="padding-bottom:0">',
+          '<div class="section-head"><div>',
+            '<div class="eyebrow">RESALE OUTLOOK</div>',
+            '<h2>What could it be worth later?</h2>',
+            '<p>A planning estimate, not a guaranteed resale quote.</p>',
+          '</div></div>',
+          '<div class="timeline">' + deprHtml + '</div>',
+        '</section>'
+      ].join('') : ''
+
+    ].join('');
+
+    /* ── Overall Recommendation ── */
+    var recoEl = document.getElementById('overall-reco-section');
+    if (recoEl) {
+      var carName = brand + ' ' + model;
+
+      /* Score each dimension purely from this vehicle's signals */
+      var sig = s; /* already computed above */
+
+      /* "Better" labels — since it's one car, score vs. dataset averages */
+      function ratingLabel(score) {
+        if (score >= 75) return 'Excellent';
+        if (score >= 55) return 'Good';
+        if (score >= 35) return 'Average';
+        return 'Below Average';
+      }
+
+      var priceRating   = ratingLabel(sig.age * 0.4 + sig.usage * 0.4 + sig.ownership * 0.2);
+      var mileageRating = ratingLabel(sig.mileage * 0.6 + sig.efficiency * 0.4);
+      var powerRating   = ratingLabel(sig.age * 0.3 + sig.usage * 0.5 + sig.mileage * 0.2);
+      var overallScore  = sig.age * 0.24 + sig.usage * 0.24 + sig.mileage * 0.16 +
+                          sig.ownership * 0.16 + sig.efficiency * 0.20;
+      var overallRating = ratingLabel(overallScore);
+
+      /* Tone colour */
+      var tone = decision.tone || 'fair';
+      var toneColor = tone === 'good' ? 'var(--green)' :
+                      tone === 'warn' ? '#f59e0b' :
+                      tone === 'bad'  ? '#ef4444' : 'var(--blue)';
+
+      /* Recommendation bullets */
+      var bullets = [];
+      bullets.push(carName + ' is a <strong>' + overallRating + '</strong> pick based on age, usage, mileage and ownership signals.');
+      if (sig.vehicle_age <= 3) bullets.push('Relatively young vehicle — lower depreciation risk.');
+      else if (sig.vehicle_age <= 7) bullets.push('Normal used-car age — good balance of price and condition.');
+      else bullets.push('Older vehicle — ensure thorough inspection before purchase.');
+      if (mileage >= 20) bullets.push('Very good fuel economy — ideal for daily commuting.');
+      else if (mileage >= 15) bullets.push('Decent fuel economy for everyday use.');
+      var bulletsHtml = bullets.map(function (b) { return '<li>' + b + '</li>'; }).join('');
+
+      recoEl.innerHTML = [
+        '<section class="section" style="padding-bottom:0">',
+          '<div class="analytics-header">',
+            '<div class="eyebrow" style="color:var(--blue)">AI DECISION</div>',
+            '<div style="display:flex;justify-content:space-between;align-items:flex-end">',
+              '<h2 style="margin:0">Here\'s what the numbers suggest.</h2>',
+              '<button class="ai-badge">✦ AI ANALYSIS</button>',
+            '</div>',
+          '</div>',
+
+          '<div class="surface ai-decision-card">',
+
+            /* Overall Recommendation */
+            '<div class="overall-recommendation">',
+              '<div class="eyebrow" style="color:var(--blue);font-size:11px;margin-bottom:12px;font-weight:700">OVERALL RECOMMENDATION</div>',
+              '<div class="highlight-box">',
+                '<strong style="display:flex;align-items:center;gap:8px"><span style="font-size:20px">🏆</span> Better overall value:</strong>',
+                '<span class="winner-name" style="color:' + toneColor + '">' + esc(carName) + '</span>',
+              '</div>',
+              '<p class="recommendation-desc">' + esc(carName) + ' is rated <strong>' + overallRating + '</strong> based on A smarter way to value your next used car.</p>',
+            '</div>',
+
+            /* Decision Breakdown */
+            '<h4 style="margin:32px 0 16px 0;font-size:16px">Decision Breakdown</h4>',
+            '<div class="decision-breakdown">',
+              '<div class="breakdown-item">',
+                '<span class="label">💰 Price</span>',
+                '<strong class="value winA">' + esc(priceRating) + '</strong>',
+              '</div>',
+              '<div class="breakdown-item">',
+                '<span class="label">⛽ Mileage</span>',
+                '<strong class="value winA">' + esc(mileageRating) + '</strong>',
+              '</div>',
+              '<div class="breakdown-item">',
+                '<span class="label">⚡ Power</span>',
+                '<strong class="value winA">' + esc(powerRating) + '</strong>',
+              '</div>',
+              '<div class="breakdown-item">',
+                '<span class="label">🎯 Overall Value</span>',
+                '<strong class="value winA">' + esc(overallRating) + '</strong>',
+              '</div>',
+            '</div>',
+
+            /* Our Recommendation */
+            '<div class="our-recommendation">',
+              '<div class="eyebrow" style="color:var(--blue);font-size:11px;margin-bottom:12px;font-weight:700">OUR RECOMMENDATION</div>',
+              '<h3 style="margin:0 0 12px 0;font-size:18px">' + esc(carName) + '</h3>',
+              '<ul class="rec-bullets">' + bulletsHtml + '</ul>',
+              '<div style="background:var(--blue-soft);padding:16px;border-radius:12px;margin-top:16px;border-left:4px solid var(--blue)">',
+                '<div style="font-weight:700;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>🎯</span> WHERE TO BUY</div>',
+                '<div style="font-size:14px;line-height:1.6;color:var(--ink)">',
+                  '<strong>Look for this model</strong> in <strong>' + esc(location) + '</strong>.',
+                  '<br><span style="color:var(--subtle);font-size:13px">This is a ' + overallRating.toLowerCase() + ' value option based on the supplied details, market price and condition signals.</span>',
+                '</div>',
+              '</div>',
+            '</div>',
+
+            /* Actions */
+            '<div class="form-actions" style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border);display:flex;gap:12px;justify-content:flex-start">',
+              '<a class="primary" href="/recommend.html" data-transition onclick="sessionStorage.setItem(\'carvalue:recommendFrom\', sessionStorage.getItem(\'carvalue:lastInput\'))">Explore Alternatives →</a>',
+              '<a class="secondary btn-outline" href="/predict.html" data-transition>Value Another Car</a>',
+            '</div>',
+            '<div style="margin-top:16px;font-size:11px;color:var(--subtle)">This recommendation is generated from the available vehicle data and predicted valuation. It does not replace physical inspection, service history verification, documentation checks or a professional assessment.</div>',
+
+          '</div>',
+        '</section>'
+      ].join('');
+    }
+
+    /* ── Fetch & Render Top 2 Recommendations ── */
+    var lastInputRaw = sessionStorage.getItem('carvalue:lastInput');
+    if (lastInputRaw) {
+      try {
+        var inputObj = JSON.parse(lastInputRaw);
+        api('/api/recommendations', { method: 'POST', body: JSON.stringify(inputObj) })
+          .then(function (recData) {
+            var recoGrid = document.getElementById('top2-reco-grid');
+            if (!recoGrid) return;
+            var recs = (recData.recommendations || []).slice(0, 2);
+            if (!recs.length) {
+              recoGrid.innerHTML = '<div class="surface empty" style="padding:28px;grid-column:1/-1">No direct alternative matches found in current dataset.</div>';
+              return;
+            }
+
+            recoGrid.innerHTML = recs.map(function (c, idx) {
+              var cp = c.input || {};
+              var csp = c.specs || {};
+              var cx = c.comparison_to_selected || {};
+              var priceDiff = Number(cx.price_difference_lakhs || 0);
+              var diffClass = priceDiff < 0 ? 'lower' : priceDiff > 0 ? 'higher' : '';
+              var diffText = priceDiff === 0 ? 'Similar Price' :
+                priceDiff < 0 ? '\u20B9' + Math.abs(priceDiff).toFixed(2) + 'L lower' :
+                                '\u20B9' + priceDiff.toFixed(2) + 'L higher';
+
+              var badges = Array.isArray(cx.badges) && cx.badges.length ? cx.badges : [cp.Fuel_Type, cp.Transmission];
+              var rankLabel = idx === 0 ? '★ #1 BEST MATCH' : '★ #2 TOP ALTERNATIVE';
+
+              return [
+                '<article class="surface info-card interactive-reco" style="--delay:' + (idx * 120) + 'ms;padding:24px">',
+                  '<div class="reco-top">',
+                    '<div><div class="eyebrow" style="color:var(--blue)">' + esc(cp.Brand || '') + '</div><h3 style="margin-top:2px">' + esc(cp.Model || '') + '</h3></div>',
+                    '<span class="rank-chip">' + rankLabel + '</span>',
+                  '</div>',
+                  '<div class="badge-row">',
+                    badges.map(function (b) { return '<span class="badge-pill exact">\u2713 ' + esc(b) + '</span>'; }).join(''),
+                  '</div>',
+                  '<div class="reco-price-row">',
+                    '<div><span style="font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;display:block">Fair Market Value</span><strong style="font-size:26px;font-family:\'Space Grotesk\'">' + money(c.predicted_price_lakhs || 0) + '</strong></div>',
+                    '<span class="reco-diff-chip ' + diffClass + '">' + esc(diffText) + '</span>',
+                  '</div>',
+                  '<div class="spec-grid" style="margin:14px 0">',
+                    '<div class="spec"><b>\u2699 ' + esc(csp.engine_cc || '—') + ' cc</b><span>ENGINE</span></div>',
+                    '<div class="spec"><b>\u03DF ' + esc(csp.power_bhp || '—') + ' bhp</b><span>POWER</span></div>',
+                    '<div class="spec"><b>\u2341 ' + esc(csp.mileage || '—') + ' km/l</b><span>MILEAGE</span></div>',
+                    '<div class="spec"><b>\u25F7 ' + esc(cp.Year || '—') + '</b><span>YEAR</span></div>',
+                  '</div>',
+                  '<div class="reco-actions" style="margin-top:16px">',
+                    '<a class="primary small-btn" href="/compare.html" data-transition style="flex:1;text-align:center" ' +
+                      'onclick="sessionStorage.setItem(\'carvalue:comparePair\', JSON.stringify({carA:' + esc(JSON.stringify(inputObj)) + ',carB:' + esc(JSON.stringify(cp)) + '}))">Compare Side-by-Side \u21C4</a>',
+                    '<a class="ghost small-btn" href="/predict.html" data-transition>Value This Car</a>',
+                  '</div>',
+                '</article>'
+              ].join('');
+            }).join('');
+          })
+          .catch(function (err) {
+            var recoGrid = document.getElementById('top2-reco-grid');
+            if (recoGrid) recoGrid.innerHTML = '<div class="surface empty" style="padding:20px;grid-column:1/-1">Could not load recommendations.</div>';
+          });
+      } catch (e) {}
+    }
+
+  } catch (err) {
+    console.error('Result render error:', err);
+    titleEl.textContent    = 'Could not display result.';
+    subtitleEl.textContent = err.message || 'An unexpected error occurred.';
+    bodyEl.innerHTML = [
+      '<div class="surface note-box" style="border-left:4px solid #f87171;padding:24px;margin-bottom:24px">',
+        '<strong>Error loading result:</strong> ' + (err.message || 'Unknown error') + '<br>',
+        '<a href="/predict.html" style="color:var(--blue);margin-top:12px;display:inline-block">',
+          '\u2190 Try valuation again',
+        '</a>',
+      '</div>'
+    ].join('');
+  }
+}());
+</script>
+</body>
+</html>

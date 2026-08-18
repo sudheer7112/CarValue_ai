@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+    <title>CarValue AI — Compare</title>
+</head>
+
+<body>
+    <header class="nav">
+        <div class="nav-inner"><a class="brand" href="/" data-transition><span class="logo"><img src="/img/car-cv.png"
+                        alt="CV" class="logo-img"></span><span>CarValue<span class="accent">AI</span></span></a><button
+                class="menu">☰</button>
+            <nav class="nav-links"><a href="/" data-transition>Home</a><a href="/predict.html"
+                    data-transition>Predict</a><a href="/compare.html" data-transition>Compare</a><a
+                    href="/recommend.html" data-transition>Alternatives</a><a href="/analytics.html"
+                    data-transition>Analytics</a></nav><a class="nav-cta" href="/predict.html" data-transition>Value a
+                car →</a>
+        </div>
+    </header>
+    <main class="container">
+        <section class="page-title">
+            <div class="eyebrow">02 / COMPARE</div>
+            <h1>Compare cars side by side</h1>
+            <p>Select two vehicles to compare their estimated prices, features, and key specifications side by side.</p>
+        </section>
+        <div class="compare-grid">
+            <section class="surface compare-card">
+                <div class="form-title"><strong>Car A</strong><span>First candidate</span></div>
+                <div id="carA"></div>
+            </section>
+            <section class="surface compare-card">
+                <div class="form-title"><strong>Car B</strong><span>Second candidate</span></div>
+                <div id="carB"></div>
+            </section>
+        </div>
+        <div class="surface form-shell" style="margin-top:22px">
+            <div class="form-actions"><button class="primary" id="compareBtn">Compare vehicles ⇄</button><span
+                    class="hint"></span></div>
+        </div>
+    </main>
+    <footer>
+        <div class="container"><span>CarValue AI · Used-car decision support</span><span>Estimates support decisions;
+                physical inspection is still required.</span></div>
+    </footer>
+    <div class="toast"></div>
+    <script src="/app.js"></script>
+    <script>
+        let catalog;
+        async function build(id) { const t = document.querySelector('#' + id); t.innerHTML = `<div class="compare-fields"><div class="field"><label>Brand</label><select class="brand"></select></div><div class="field"><label>Model</label><select class="model"></select></div><div class="field"><label>City / Location</label><select class="location"></select></div><div class="field"><label>Year</label><select class="year"></select></div><div class="field"><label>Kilometers</label><input class="km" type="number" min="0" value="50000"></div><div class="field"><label class="mileage-label">Mileage (km/l)</label><input class="mileage" type="number" min="0.1" max="29.9" step=".1" value="18"></div><div class="field"><label>Fuel type</label><select class="fuel"></select></div><div class="field"><label>Transmission</label><select class="transmission"></select></div><div class="field"><label>Owner</label><select class="owner"></select></div></div>`; const q = s => t.querySelector(s); fillSelect(q('.brand'), catalog.brands, 'Choose brand'); fillSelect(q('.location'), catalog.locations, 'Choose city'); fillSelect(q('.year'), catalog.years.slice().reverse(), 'Choose year'); fillSelect(q('.owner'), catalog.owners, 'Choose owner'); fillSelect(q('.model'), [], 'Choose model'); fillSelect(q('.fuel'), [], 'Choose fuel'); fillSelect(q('.transmission'), [], 'Choose transmission'); q('.model').disabled = true; q('.fuel').disabled = true; q('.transmission').disabled = true; const checkEv = () => { if (q('.fuel').value === 'Electric') { if (q('.mileage-label')) q('.mileage-label').textContent = 'Electric Efficiency (km/kWh)'; q('.mileage').placeholder = 'e.g. 7.5'; if (!q('.mileage').value || Number(q('.mileage').value) > 15) q('.mileage').value = '7.5' } else { if (q('.mileage-label')) q('.mileage-label').textContent = 'Mileage (km/l)'; q('.mileage').placeholder = 'e.g. 14.5' } }; q('.brand').addEventListener('change', e => { q('.model').disabled = !e.target.value; q('.fuel').disabled = true; q('.transmission').disabled = true; fillSelect(q('.model'), catalog.models_by_brand[e.target.value] || [], 'Choose model'); fillSelect(q('.fuel'), [], 'Choose fuel'); fillSelect(q('.transmission'), [], 'Choose transmission'); checkEv() }); q('.model').addEventListener('change', () => { q('.fuel').disabled = !q('.model').value; q('.transmission').disabled = !q('.model').value; const v = catalog.variants[q('.brand').value + '|||' + q('.model').value] || {}; fillSelect(q('.fuel'), v.fuel_types || catalog.fuel_types, 'Choose fuel'); fillSelect(q('.transmission'), v.transmissions || catalog.transmissions, 'Choose transmission'); checkEv() }); q('.fuel').addEventListener('change', checkEv) }
+        function populateCard(id, data) { if (!data) return; const t = document.querySelector('#' + id); if (!t) return; const b = data.brand || data.Brand, m = data.model || data.Model; if (b) { t.querySelector('.brand').value = b; fillSelect(t.querySelector('.model'), catalog.models_by_brand[b] || [], 'Choose model'); t.querySelector('.model').disabled = false } if (m) { t.querySelector('.model').value = m; const v = catalog.variants[(b || '') + '|||' + m] || {}; fillSelect(t.querySelector('.fuel'), v.fuel_types || catalog.fuel_types, 'Choose fuel'); fillSelect(t.querySelector('.transmission'), v.transmissions || catalog.transmissions, 'Choose transmission'); t.querySelector('.fuel').disabled = false; t.querySelector('.transmission').disabled = false } if (data.location || data.Location) t.querySelector('.location').value = data.location || data.Location; if (data.year || data.Year) t.querySelector('.year').value = data.year || data.Year; if (data.km_driven || data.Kilometers_Driven) t.querySelector('.km').value = data.km_driven || data.Kilometers_Driven; if (data.mileage || data.Mileage) t.querySelector('.mileage').value = data.mileage || data.Mileage; if (data.fuel || data.Fuel_Type) t.querySelector('.fuel').value = data.fuel || data.Fuel_Type; if (data.transmission || data.Transmission) t.querySelector('.transmission').value = data.transmission || data.Transmission; if (data.owner || data.Owner_Type) t.querySelector('.owner').value = data.owner || data.Owner_Type;['.brand', '.model', '.location', '.year', '.fuel', '.transmission', '.owner'].forEach(s => syncSmartSelect(t.querySelector(s))) }
+        function collect(id) { const t = document.querySelector('#' + id); return { brand: t.querySelector('.brand').value, model: t.querySelector('.model').value, location: t.querySelector('.location').value, year: t.querySelector('.year').value, km_driven: t.querySelector('.km').value, mileage: t.querySelector('.mileage').value, fuel: t.querySelector('.fuel').value, transmission: t.querySelector('.transmission').value, owner: t.querySelector('.owner').value } }
+        (async () => { catalog = await api('/api/catalog'); await Promise.all([build('carA'), build('carB')]); const pairRaw = sessionStorage.getItem('carvalue:comparePair'); if (pairRaw) { try { const p = JSON.parse(pairRaw); if (p.carA) populateCard('carA', p.carA); if (p.carB) populateCard('carB', p.carB); sessionStorage.removeItem('carvalue:comparePair') } catch (e) { } } compareBtn.onclick = async () => { const a = collect('carA'), b = collect('carB'); if (!a.model || !b.model || !a.fuel || !b.fuel || !a.transmission || !b.transmission) { showToast('Complete both vehicle profiles.'); return } if (!validateMileage(a.mileage) || !validateMileage(b.mileage)) return; compareBtn.disabled = true; try { const r = await api('/api/compare', { method: 'POST', body: JSON.stringify({ carA: a, carB: b }) }); sessionStorage.setItem('carvalue:compare', JSON.stringify(r)); document.body.classList.add('page-exit'); setTimeout(() => location.href = '/compare-result.html', 180) } catch (e) { showToast(e.message) } compareBtn.disabled = false } })();
+    </script>
+</body>
+
+</html>

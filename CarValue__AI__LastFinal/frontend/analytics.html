@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="CarValue AI Analytics Dashboard">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>CarValue AI — Analytics Dashboard</title>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/" data-transition>
+      <span class="logo"><img src="/img/car-cv.png" alt="CV" class="logo-img"></span>
+      <span>CarValue<span class="accent">AI</span></span>
+    </a>
+    <button class="menu">☰</button>
+    <nav class="nav-links">
+      <a href="/" data-transition>Home</a>
+      <a href="/predict.html" data-transition>Predict</a>
+      <a href="/compare.html" data-transition>Compare</a>
+      <a href="/recommend.html" data-transition>Alternatives</a>
+      <a href="/analytics.html" data-transition class="active">Analytics</a>
+    </nav>
+    <a class="nav-cta" href="/predict.html" data-transition>Value a car →</a>
+  </div>
+</header>
+
+<main class="container">
+  <section class="page-title">
+    <div class="eyebrow">04 / MARKET ANALYTICS</div>
+    <h1>Understand what moves car prices.</h1>
+    <p>Explore historical used-car data to understand how vehicle age, kilometres driven, brand, fuel type, transmission and model year are associated with market prices.</p>
+  </section>
+
+  <!-- Dataset Stats -->
+  <div id="analytics-stats" class="cards-4" style="margin-bottom: 30px;">
+    <div class="surface empty" style="padding:28px; grid-column: 1/-1;">Loading market data...</div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div id="analytics-charts" class="analytics-charts-grid" style="display: none;">
+    <!-- Chart 1: Age -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>Price vs Car Age</h3>
+        <p>Shows how average recorded price changes as vehicles become older.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-age"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 2: KM -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>Price vs Kilometres Driven</h3>
+        <p>Shows average price across different kilometre ranges.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-km"></canvas>
+      </div>
+    </div>
+    
+    <!-- Chart 3: Fuel -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>Average Price by Fuel Type</h3>
+        <p>Compare average market prices by fuel category.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-fuel"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 4: Transmission -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>Average Price by Transmission</h3>
+        <p>Compare average prices between transmission types.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-trans"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 5: Year Trends -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>Year-wise Price Trends</h3>
+        <p>Average recorded price by vehicle manufacturing year.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-year"></canvas>
+      </div>
+    </div>
+    
+    <!-- Chart 6: Correlations -->
+    <div class="surface chart-card">
+      <div class="chart-card-head">
+        <h3>What Factors Are Associated With Price?</h3>
+        <p>Correlation indicates strength and direction of association with price.</p>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="chart-corr"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart 7: Brand Comparison -->
+    <div class="surface chart-card" style="grid-column: 1 / -1;">
+      <div class="chart-card-head">
+        <h3>Average Price by Brand</h3>
+        <p>Compare average used-car prices across brands represented in the dataset.</p>
+      </div>
+      <div class="chart-canvas-wrap" style="min-height: 420px;">
+        <canvas id="chart-brand"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Good Deal Checker -->
+  <section class="section">
+    <div class="eyebrow" style="color:var(--blue); font-size: 11px; margin-bottom: 8px;">DEAL NEGOTIATION CHECKER</div>
+    <h2 style="margin-bottom: 12px;">Is this car a Good Deal?</h2>
+    <p style="margin-bottom: 24px; color: var(--ink);">Enter the seller's asking price and compare it against the exact fair value prediction. The system classifies the opportunity as Good Deal, Fair Deal or Overpriced.</p>
+    
+    <div class="cards-2" id="deal-checker-container">
+      <div class="surface" style="padding: 24px;">
+        <div id="deal-prediction-status" style="margin-bottom: 20px; font-size: 13px;">
+          <!-- Status injected via JS -->
+        </div>
+        <div class="input-group">
+          <label>Seller Asking Price (₹ Lakhs)</label>
+          <input type="number" id="seller-price" step="0.01" min="0" placeholder="e.g. 5.5">
+        </div>
+        <button id="btn-check-deal" class="primary" style="width: 100%; margin-top: 16px;" disabled>Check Deal →</button>
+      </div>
+      
+      <div class="surface" id="deal-result-area" style="padding: 24px; display: flex; align-items: center; justify-content: center; text-align: center; background-color: var(--page-bg);">
+        <p style="color: var(--muted); font-size: 14px;">Please enter the seller's price to check the deal.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>CarValue AI · Used-car decision support</span>
+    <span>Estimates support decisions; physical inspection is still required.</span>
+  </div>
+</footer>
+<div class="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof loadAnalyticsDashboard === 'function') {
+      loadAnalyticsDashboard();
+    }
+  });
+</script>
+</body>
+</html>

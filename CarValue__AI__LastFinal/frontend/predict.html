@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Predict the fair market value of your used car using CarValue AI's machine learning model.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <title>CarValue AI — Predict</title>
+</head>
+<body>
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="/" data-transition>
+      <span class="logo"><img src="/img/car-cv.png" alt="CV" class="logo-img"></span>
+      <span>CarValue<span class="accent">AI</span></span>
+    </a>
+    <button class="menu">☰</button>
+    <nav class="nav-links">
+      <a href="/" data-transition>Home</a>
+      <a href="/predict.html" data-transition>Predict</a>
+      <a href="/compare.html" data-transition>Compare</a>
+      <a href="/recommend.html" data-transition>Alternatives</a>
+      <a href="/analytics.html" data-transition>Analytics</a>
+    </nav>
+    <a class="nav-cta" href="/predict.html" data-transition>Value a car →</a>
+  </div>
+</header>
+
+<main class="container">
+  <section class="page-title">
+    <div class="eyebrow">01 / VALUE A CAR</div>
+    <h1>Enter your vehicle details.</h1>
+    <p>Select your car and provide the details below to get an estimated market value.</p>
+  </section>
+
+  <section class="surface form-shell">
+    <div class="form-title">
+      <strong>Vehicle profile</strong>
+      <span>Searchable compact menus · no engine/power input</span>
+    </div>
+
+    <form id="predictForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="brand">Brand</label>
+          <select id="brand" required></select>
+        </div>
+        <div class="field">
+          <label for="model">Model</label>
+          <select id="model" required></select>
+        </div>
+        <div class="field">
+          <label for="location">City / Location</label>
+          <select id="location" required></select>
+        </div>
+        <div class="field">
+          <label for="year">Year</label>
+          <select id="year" required></select>
+        </div>
+        <div class="field">
+          <label for="km">Kilometers driven</label>
+          <input id="km" type="number" min="0" placeholder="e.g. 48000" required>
+        </div>
+        <div class="field">
+          <label for="mileage" id="mileageLabel">Mileage (km/l) / Electric Efficiency (km/kWh)</label>
+          <input id="mileage" type="number" step=".1" min="0.1" max="29.9" placeholder="e.g. 14.5" required>
+        </div>
+        <div class="field">
+          <label for="fuel">Fuel type</label>
+          <select id="fuel" required></select>
+        </div>
+        <div class="field">
+          <label for="transmission">Transmission</label>
+          <select id="transmission" required></select>
+        </div>
+        <div class="field">
+          <label for="owner">Owner</label>
+          <select id="owner" required></select>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="primary" id="predictBtn" type="submit">Calculate fair value →</button>
+        <span class="hint">Engine CC, power and other specifications are retrieved from the selected model.</span>
+      </div>
+      <div id="formError" style="display:none;margin-top:16px;padding:14px 18px;background:rgba(248,113,113,.12);border-left:4px solid #f87171;border-radius:8px;color:#f87171;font-size:14px;font-weight:500"></div>
+    </form>
+  </section>
+
+
+</main>
+
+<footer>
+  <div class="container">
+    <span>CarValue AI · Used-car decision support</span>
+    <span>Estimates support decisions; physical inspection is still required.</span>
+  </div>
+</footer>
+<div class="toast"></div>
+
+<script src="/app.js"></script>
+<script>
+(async () => {
+  const $ = id => document.getElementById(id);
+
+  try {
+    const c = await api('/api/catalog');
+
+    const brand     = $('brand');
+    const modelSel  = $('model');
+    const location  = $('location');
+    const year      = $('year');
+    const fuel      = $('fuel');
+    const trans     = $('transmission');
+    const owner     = $('owner');
+
+    // Populate static dropdowns
+    fillSelect(brand,    c.brands,                   'Choose brand');
+    fillSelect(location, c.locations,                'Choose city');
+    fillSelect(year,     c.years.slice().reverse(),  'Choose year');
+    fillSelect(owner,    c.owners,                   'Choose owner');
+
+    fillSelect(modelSel, [], 'Choose model');
+    fillSelect(fuel,     [], 'Choose fuel');
+    fillSelect(trans,    [], 'Choose transmission');
+    modelSel.disabled = true;
+    fuel.disabled     = true;
+    trans.disabled    = true;
+    syncSmartSelect(modelSel);
+    syncSmartSelect(fuel);
+    syncSmartSelect(trans);
+
+    brand.addEventListener('change', () => {
+      const models = c.models_by_brand[brand.value] || [];
+      fillSelect(modelSel, models, 'Choose model');
+      modelSel.disabled = !brand.value;
+      fuel.disabled     = true;
+      trans.disabled    = true;
+      fillSelect(fuel,  [], 'Choose fuel');
+      fillSelect(trans, [], 'Choose transmission');
+      syncSmartSelect(modelSel);
+      syncSmartSelect(fuel);
+      syncSmartSelect(trans);
+    });
+
+    modelSel.addEventListener('change', () => {
+      const key     = (brand.value || '') + '|||' + (modelSel.value || '');
+      const variant = c.variants[key] || {};
+      const fuels   = variant.fuel_types    || c.fuel_types;
+      const trs     = variant.transmissions || c.transmissions;
+      fillSelect(fuel,  fuels, 'Choose fuel');
+      fillSelect(trans, trs,   'Choose transmission');
+      fuel.disabled  = !modelSel.value;
+      trans.disabled = !modelSel.value;
+      syncSmartSelect(fuel);
+      syncSmartSelect(trans);
+      checkElectric();
+    });
+
+    const mileageLabel = $('mileageLabel');
+
+    function checkElectric() {
+      if (fuel.value === 'Electric') {
+        if (mileageLabel) mileageLabel.innerHTML = 'Electric Efficiency (km/kWh) <span style="color:#6366f1;font-size:12px;font-weight:600">⚡ EV Efficiency</span>';
+        $('mileage').placeholder = 'e.g. 7.5 (7-8 km/kWh)';
+        if (!$('mileage').value || Number($('mileage').value) > 15) {
+          $('mileage').value = '7.5';
+        }
+      } else {
+        if (mileageLabel) mileageLabel.innerHTML = 'Mileage (km/l)';
+        $('mileage').placeholder = 'e.g. 14.5';
+        if ($('mileage').value === '7.5') {
+          $('mileage').value = '';
+        }
+      }
+    }
+
+    fuel.addEventListener('change', checkElectric);
+
+    // Form submission → call API → store result → navigate to result page
+    $('predictForm').addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const errBox = $('formError');
+      const showErr = msg => { errBox.textContent = '⚠ ' + msg; errBox.style.display = 'block'; errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+      const clearErr = () => { errBox.style.display = 'none'; errBox.textContent = ''; };
+      clearErr();
+
+      // Validate required fields
+      const missing = [];
+      if (!brand.value)    missing.push('Brand');
+      if (!modelSel.value) missing.push('Model');
+      if (!location.value) missing.push('City / Location');
+      if (!year.value)     missing.push('Year');
+      if (!fuel.value)     missing.push('Fuel type');
+      if (!trans.value)    missing.push('Transmission');
+      if (!owner.value)    missing.push('Owner');
+      if (missing.length) {
+        showErr('Please select: ' + missing.join(', '));
+        return;
+      }
+      if (!validateMileage($('mileage').value)) return;
+      const km = Number($('km').value);
+      if (!$('km').value || isNaN(km) || km < 0) { showErr('Please enter a valid kilometres driven value (0 or more).'); return; }
+
+      const btn = $('predictBtn');
+      btn.disabled  = true;
+      btn.innerHTML = '<span class="loading"><span class="spinner"></span>Calculating…</span>';
+
+      try {
+        const payload = {
+          brand:        brand.value,
+          model:        modelSel.value,
+          location:     location.value,
+          year:         year.value,
+          km_driven:    $('km').value,
+          mileage:      $('mileage').value,
+          fuel:         fuel.value,
+          transmission: trans.value,
+          owner:        owner.value
+        };
+
+        const r = await api('/api/predict', {
+          method: 'POST',
+          body:   JSON.stringify(payload)
+        });
+
+        // Persist result and input for result.html to consume
+        sessionStorage.setItem('carvalue:lastPrediction', JSON.stringify(r));
+        sessionStorage.setItem('carvalue:lastInput',      JSON.stringify(payload));
+
+        document.body.classList.add('page-exit');
+        setTimeout(() => { window.location.href = '/result.html'; }, 180);
+
+      } catch (err) {
+        showErr(err.message || 'Prediction failed. Please check your inputs and try again.');
+        btn.disabled  = false;
+        btn.textContent = 'Calculate fair value →';
+      }
+    });
+
+  } catch (e) {
+    console.error('Catalog load error:', e);
+    showToast('Could not load vehicle options — make sure Flask is running on port 5000.');
+    // Show a persistent message in the form area too
+    const errBox = document.getElementById('formError');
+    if (errBox) {
+      errBox.textContent = '⚠ Failed to connect to the server. Run: python backend/app.py and refresh.';
+      errBox.style.display = 'block';
+    }
+  }
+})();
+</script>
+</body>
+</html>

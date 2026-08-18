@@ -1,0 +1,130 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/style.css"><title>CarValue AI — Comparison result</title></head><body><header class="nav"><div class="nav-inner">
+<a class="brand" href="/" data-transition><span class="logo"><img src="/img/car-cv.png" alt="CV" class="logo-img"></span><span>CarValue<span class="accent">AI</span></span></a>
+<button class="menu">☰</button>
+<nav class="nav-links">
+<a href="/" data-transition>Home</a><a href="/predict.html" data-transition>Predict</a>
+<a href="/compare.html" data-transition>Compare</a><a href="/recommend.html" data-transition>Alternatives</a>
+<a href="/analytics.html" data-transition>Analytics</a>
+</nav><a class="nav-cta" href="/predict.html" data-transition>Value a car →</a>
+</div></header>
+<main class="container"><section class="page-title"><div class="eyebrow">COMPARISON RESULT</div><h1>The better fit, side by side.</h1><p>Same decision criteria. Different vehicles.</p></section><div id="out"></div><div class="form-actions"><a class="primary" href="/compare.html" data-transition>Compare again ⇄</a></div></main><footer><div class="container"><span>CarValue AI · Used-car decision support</span><span>Estimates support decisions; physical inspection is still required.</span></div></footer><div class="toast"></div><script src="/app.js"></script>
+<script>
+function money(x){return Number(x)>=100?`₹${(Number(x)/100).toFixed(2)} Cr`:`₹${Number(x).toFixed(2)} L`}
+function card(label,r,isWinner){const p=r.input;const border=isWinner?'border:2px solid var(--green);box-shadow:0 0 0 3px rgba(16,185,129,0.1)':'';return `<section class="surface car-result" style="${border}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div class="eyebrow">${label}</div>${isWinner?'<span style="background:var(--green);color:white;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600">✓ BETTER VALUE</span>':''}</div><div style="font-size:18px;font-weight:700;color:var(--ink);margin:8px 0">${p.Brand} ${p.Model}</div><div style="background:var(--blue-soft);padding:10px 14px;border-radius:12px;margin:12px 0;display:flex;align-items:center;gap:12px"><span style="font-size:20px">📍</span><div><div style="font-size:12px;color:var(--label);font-weight:600">LOCATION</div><div style="font-size:15px;font-weight:700;color:var(--blue)">${p.Location} • ${p.Year}</div></div></div><div class="car-price">${money(r.predicted_price_lakhs)}</div><div class="range">Fair band ${money(r.price_range_lakhs[0])} — ${money(r.price_range_lakhs[1])}</div><div class="detail-row" style="margin-top:17px">
+<div class="detail"><small>Engine</small><strong>${r.specs.engine_cc} cc</strong></div><div class="detail"><small>Power</small><strong>${r.specs.power_bhp} bhp</strong></div>
+<div class="detail"><small>Mileage</small><strong>${r.specs.mileage} km/l</strong></div><div class="detail"><small>KM driven</small><strong>${Number(p.Kilometers_Driven).toLocaleString()}</strong></div>
+<div class="detail"><small>Fuel</small><strong>${p.Fuel_Type}</strong></div><div class="detail"><small>Owner</small><strong>${p.Owner_Type}</strong></div></div>
+</section>`}
+
+function generateAnalytics(r) {
+  const pA = r.carA.input, pB = r.carB.input;
+  const nameA = pA.Brand + ' ' + pA.Model;
+  const nameB = pB.Brand + ' ' + pB.Model;
+  
+  const priceA = r.carA.predicted_price_lakhs;
+  const priceB = r.carB.predicted_price_lakhs;
+  
+  const betterPrice = priceA <= priceB ? nameA : nameB;
+  const betterMileage = r.carA.specs.mileage >= r.carB.specs.mileage ? nameA : nameB;
+  const betterPower = r.carA.specs.power_bhp >= r.carB.specs.power_bhp ? nameA : nameB;
+  
+  let overallWinner = "Tie";
+  if (r.winner === "Car A") overallWinner = nameA;
+  else if (r.winner === "Car B") overallWinner = nameB;
+  
+  const recWinner = overallWinner === "Tie" ? nameA : overallWinner;
+  const otherWinner = recWinner === nameA ? nameB : nameA;
+  const recPrice = recWinner === nameA ? priceA : priceB;
+  const otherPrice = recWinner === nameA ? priceB : priceA;
+  
+  const diff = Math.abs(recPrice - otherPrice).toFixed(2);
+  
+  return `
+    <section id="analytics" class="analytics-section">
+      <div class="analytics-header">
+        <div class="eyebrow" style="color:var(--blue)">AI DECISION</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end">
+          <h2 style="margin:0">Here's what the numbers suggest.</h2>
+          <button class="ai-badge">✦ AI ANALYSIS</button>
+        </div>
+      </div>
+      
+      <div class="surface ai-decision-card">
+        <div class="overall-recommendation">
+          <div class="eyebrow" style="color:var(--blue); font-size:11px; margin-bottom:12px; font-weight:700">OVERALL RECOMMENDATION</div>
+          <div class="highlight-box">
+            <strong style="display:flex; align-items:center; gap:8px"><span style="font-size:20px">🏆</span> Better overall value:</strong>
+            <span class="winner-name">${overallWinner}</span>
+          </div>
+          <p class="recommendation-desc">${overallWinner} is the stronger overall value based on the available vehicle data. The recommendation considers predicted price, mileage and engine performance.</p>
+        </div>
+        
+        <h4 style="margin: 32px 0 16px 0; font-size:16px">Decision Breakdown</h4>
+        <div class="decision-breakdown">
+          <div class="breakdown-item">
+            <span class="label">💰 Price</span>
+            <strong class="value ${betterPrice===nameA?'winA':'winB'}">${betterPrice}</strong>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">⛽ Mileage</span>
+            <strong class="value ${betterMileage===nameA?'winA':'winB'}">${betterMileage}</strong>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">⚡ Power</span>
+            <strong class="value ${betterPower===nameA?'winA':'winB'}">${betterPower}</strong>
+          </div>
+          <div class="breakdown-item">
+            <span class="label">🎯 Overall Value</span>
+            <strong class="value ${overallWinner===nameA?'winA':'winB'}">${overallWinner}</strong>
+          </div>
+        </div>
+        
+        <div class="our-recommendation">
+          <div class="eyebrow" style="color:var(--blue); font-size:11px; margin-bottom:12px; font-weight:700">OUR RECOMMENDATION</div>
+          <h3 style="margin:0 0 12px 0; font-size:18px">${overallWinner}</h3>
+          <ul class="rec-bullets">
+            <li>${overallWinner} has the stronger price advantage.</li>
+            <li>Its predicted price is ₹${diff} L ${recPrice <= otherPrice ? 'lower' : 'higher'} than the other vehicle.</li>
+          </ul>
+          <div style="background:var(--blue-soft);padding:16px;border-radius:12px;margin-top:16px;border-left:4px solid var(--blue)">
+            <div style="font-weight:700;color:var(--blue);margin-bottom:8px;display:flex;align-items:center;gap:8px"><span>🎯</span> WHERE TO BUY</div>
+            <div style="font-size:14px;line-height:1.6;color:var(--ink)">
+              <strong>Buy from ${recWinner === nameA ? 'Car A' : 'Car B'}</strong> in <strong>${recWinner === nameA ? r.carA.input.Location : r.carB.input.Location}</strong>.
+              <br><span style="color:var(--subtle);font-size:13px">This is the better value option after comparing price, condition signals, and market factors.</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-actions" style="margin-top:32px; padding-top:24px; border-top:1px solid var(--border); display:flex; gap:12px; justify-content:flex-start">
+          <a class="primary" href="/recommend.html" data-transition>Explore Alternatives →</a>
+          <a class="secondary btn-outline" href="/compare.html" data-transition>Compare Another Pair</a>
+        </div>
+        <div style="margin-top:16px; font-size:11px; color:var(--subtle)">This recommendation is generated from the available vehicle data and predicted valuation. It does not replace physical inspection, service history verification, documentation checks or a professional assessment.</div>
+      </div>
+    </section>
+  `;
+}
+
+const r=JSON.parse(sessionStorage.getItem("carvalue:compare")||"null");
+if(!r) {
+  out.innerHTML='<div class="surface empty">No comparison stored. <a href="/compare.html">Start one →</a></div>';
+} else {
+  const isCarAWinner = r.winner === "Car A" || (r.winner.includes("Very close") && r.carA.predicted_price_lakhs <= r.carB.predicted_price_lakhs);
+  const isCarBWinner = r.winner === "Car B" || (r.winner.includes("Very close") && r.carB.predicted_price_lakhs < r.carA.predicted_price_lakhs);
+  const comparisonOutput = `
+    <div class="comparison-output-shell">
+      <div class="comparison-banner">
+        <strong>Compare the differences</strong>
+        <span>Look at price, running cost, engine, power, usage and ownership side by side.</span>
+      </div>
+      <div class="compare-result-grid">
+        ${card("CAR A", r.carA, isCarAWinner)}
+        ${card("CAR B", r.carB, isCarBWinner)}
+      </div>
+      ${generateAnalytics(r)}
+    </div>
+  `;
+
+  out.innerHTML = comparisonOutput;
+}
+</script></body></html>
